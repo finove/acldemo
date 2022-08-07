@@ -3,8 +3,11 @@ package main
 import (
 	"fmt"
 	"log"
+	"net/http"
 
 	"github.com/casbin/casbin/v2"
+	"github.com/gin-gonic/gin"
+	"github.com/spf13/cobra"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
@@ -20,8 +23,20 @@ func main() {
 	} else {
 		fmt.Printf("action deny\n")
 	}
-	UserDB()
+	// UserDB()
+	root.Execute()
 	fmt.Printf("done\n")
+	UserWeb()
+}
+
+func UserWeb() {
+	r := gin.Default()
+	r.GET("/ping", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"message": "pong",
+		})
+	})
+	r.Run()
 }
 
 func UserDB() {
@@ -47,4 +62,12 @@ type Device struct {
 	Expire string `json:"Expire"`
 	Remark string `json:"Remark"`
 	Active bool   `json:"Active"`
+}
+
+var root cobra.Command = cobra.Command{
+	Use:     "acldemo",
+	Version: "0.0.1",
+	Run: func(cmd *cobra.Command, args []string) {
+		log.Printf("ok")
+	},
 }
