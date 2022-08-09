@@ -1,73 +1,67 @@
 package main
 
 import (
-	"fmt"
-	"log"
-	"net/http"
+	"os"
 
-	"github.com/casbin/casbin/v2"
-	"github.com/gin-gonic/gin"
+	"github.com/finove/acldemo/server"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
+)
+
+var (
+	cmdVerbose    bool
+	cmdLevel      string
+	cmdLogFile    string
+	cmdConfigFile string
 )
 
 func main() {
-	var sub = "admin"
-	var obj = "book"
-	var act = "read"
-	e, err := casbin.NewEnforcer("data/model.conf", "data/policy.csv")
-	log.Printf("new enforcer %v", err)
-	if res, _ := e.Enforce(sub, obj, act); res {
-		fmt.Printf("action ok\n")
-	} else {
-		fmt.Printf("action deny\n")
-	}
-	// UserDB()
 	root.Execute()
-	fmt.Printf("done\n")
-	UserWeb()
-}
-
-func UserWeb() {
-	r := gin.Default()
-	r.GET("/ping", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"message": "pong",
-		})
-	})
-	r.Run()
-}
-
-func UserDB() {
-	db, err := gorm.Open(sqlite.Open("test.db"), &gorm.Config{})
-	if err != nil {
-		log.Printf("failed to connect database")
-		return
-	}
-	db.AutoMigrate(&Device{})
-	db.Create(&Device{
-		MAC:    "000EA93D209C",
-		Remark: "测试1",
-	})
-	var dev Device
-	db.First(&dev, "mac = ?", "000EA93D209C")
-	log.Printf("find device %+v", dev)
-}
-
-type Device struct {
-	gorm.Model
-	MAC    string `json:"MAC"`
-	ID     string `json:"ID"`
-	Expire string `json:"Expire"`
-	Remark string `json:"Remark"`
-	Active bool   `json:"Active"`
 }
 
 var root cobra.Command = cobra.Command{
 	Use:     "acldemo",
 	Version: "0.0.1",
-	Run: func(cmd *cobra.Command, args []string) {
-		log.Printf("ok")
+	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		zerolog.SetGlobalLevel(getZerologLevel(cmdLevel))
+		zerolog.TimeFieldFormat = "2006/01/02 15:04:05.000"
+		if cmdVerbose {
+			log.Logger = log.With().Caller().Logger().Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: "2006/01/02 15:04:05.000"})
+		} else {
+			log.Logger = log.Output(os.Stdout)
+		}
 	},
+	Run: func(cmd *cobra.Command, args []string) {
+		log.Error().Msg("error info")
+		log.Warn().Msg("warning info")
+		log.Info().Msg("info info")
+		log.Debug().Msg("debug info")
+		server.Run()
+	},
+}
+
+func init() {
+	root.PersistentFlags().BoolVarP(&cmdVerbose, "verbose", "v", false, "show log in console")
+	root.PersistentFlags().StringVarP(&cmdLevel, "level", "l", "info", "log level (debug|info|warn|error|fatal)")
+	root.PersistentFlags().StringVar(&cmdLogFile, "logpath", "", "log file path")
+	root.PersistentFlags().StringVar(&cmdConfigFile, "config", "", "use config file")
+}
+
+func getZerologLevel(level string) (l zerolog.Level) {
+	switch level {
+	case "fatal":
+		l = zerolog.FatalLevel
+	case "error":
+		l = zerolog.ErrorLevel
+	case "warn":
+		l = zerolog.WarnLevel
+	case "info":
+		l = zerolog.InfoLevel
+	case "debug":
+		l = zerolog.DebugLevel
+	default:
+		l = zerolog.Disabled
+	}
+	return
 }
