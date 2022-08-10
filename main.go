@@ -3,12 +3,15 @@ package main
 import (
 	"io"
 	"os"
+	"path/filepath"
 	"strconv"
 
+	"github.com/finove/acldemo/pkg/upath"
 	"github.com/finove/acldemo/server"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
@@ -39,10 +42,40 @@ var root cobra.Command = cobra.Command{
 }
 
 func init() {
+	cobra.OnInitialize(LoadConfig)
 	root.PersistentFlags().BoolVarP(&cmdVerbose, "verbose", "v", false, "show log in console")
 	root.PersistentFlags().StringVarP(&cmdLevel, "level", "l", "info", "log level (debug|info|warn|error|fatal)")
 	root.PersistentFlags().StringVar(&cmdLogFile, "logpath", "", "log file path")
 	root.PersistentFlags().StringVar(&cmdConfigFile, "config", "", "use config file")
+}
+
+func LoadConfig() {
+	var err error
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: "2006/01/02 15:04:05.000"})
+	viper.SetDefault("logLevel", "info")
+	if cmdConfigFile == "" {
+		return
+	}
+	if filepath.IsAbs(cmdConfigFile) {
+		viper.SetConfigFile(cmdConfigFile)
+	} else {
+		viper.SetConfigName(cmdConfigFile)
+		viper.SetConfigType("yaml")
+		viper.AddConfigPath(upath.AppDirectory())
+		viper.AddConfigPath(upath.WorkDirectory())
+	}
+	if err = viper.ReadInConfig(); err != nil {
+		log.Err(err).Msg("load config file")
+		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+			if viper.ConfigFileUsed() != "" {
+				err = viper.WriteConfig()
+				log.Err(err).Msgf("write config file %s", viper.ConfigFileUsed())
+			} else {
+				err = viper.WriteConfigAs(cmdConfigFile)
+				log.Err(err).Msgf("write config file as %s", cmdConfigFile)
+			}
+		}
+	}
 }
 
 func SetupZerolog(logLevel, logFile string, verbose bool) {
