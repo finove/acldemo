@@ -7,11 +7,13 @@ require (
 	github.com/gofiber/fiber/v2 v2.36.0
 	github.com/rs/zerolog v1.27.0
 	github.com/spf13/cobra v1.5.0
+	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 	gorm.io/driver/sqlite v1.3.6
 	gorm.io/gorm v1.23.8
 )
 
 require (
+	github.com/BurntSushi/toml v1.2.0 // indirect
 	github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible // indirect
 	github.com/andybalholm/brotli v1.0.4 // indirect
 	github.com/inconshreveable/mousetrap v1.0.1 // indirect
