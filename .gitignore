@@ -2,3 +2,5 @@
 *.db
 log/**
 *.yaml
+*.tar.gz
+static/**
