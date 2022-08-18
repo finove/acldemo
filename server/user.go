@@ -23,10 +23,11 @@ var (
 )
 
 type loginRequest struct {
-	UserName string `json:"user_name,omitempty" validate:"required"`
+	Username string `json:"username,omitempty" validate:"required"`
 	Password string `json:"password,omitempty" validate:"required"`
 }
 
+// Login 帐号登录
 func Login(c *fiber.Ctx) (err error) {
 	var req loginRequest
 	var usr user.User
@@ -46,7 +47,7 @@ func Login(c *fiber.Ctx) (err error) {
 		return c.Status(fiber.StatusUnauthorized).JSON(&resp)
 	}
 	// 查找用户，验证密码
-	if res := db.Where("name = ?", req.UserName).First(&usr); errors.Is(res.Error, gorm.ErrRecordNotFound) {
+	if res := db.Where("name = ?", req.Username).First(&usr); errors.Is(res.Error, gorm.ErrRecordNotFound) {
 		resp.SetErrorCode(1003, res.Error)
 		return c.Status(fiber.StatusForbidden).JSON(&resp)
 	}
@@ -73,7 +74,7 @@ func Login(c *fiber.Ctx) (err error) {
 }
 
 type newUserRequest struct {
-	UserName string `json:"user_name,omitempty" validate:"required"`
+	UserName string `json:"username,omitempty" validate:"required"`
 	Password string `json:"password,omitempty" validate:"required"`
 }
 
@@ -101,17 +102,96 @@ func FindUser(c *fiber.Ctx) (err error) {
 
 func NewUser(c *fiber.Ctx) error {
 	var err error
-	var newU newUserRequest
-	if err = c.BodyParser(&newU); err != nil {
-		return c.JSON(fiber.Map{
-			"code": 1,
-			"msg":  "invalid request body",
-		})
+	var req newUserRequest
+	var resp commResponse
+	var u *user.User
+	if err = c.BodyParser(&req); err != nil {
+		resp.SetErrorCode(2001, err)
+		return c.JSON(&resp)
 	}
-	if err = validate.Struct(newU); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(err.Error())
+	if err = validate.Struct(req); err != nil {
+		resp.SetErrorCode(2001, err)
+		return c.Status(fiber.StatusBadRequest).JSON(&resp)
 	}
-	return c.JSON(newU)
+	u = user.NewUser(req.UserName, req.Password)
+	if tx := db.Create(u); tx.Error != nil {
+		resp.SetErrorCode(2201, tx.Error)
+	}
+	return c.JSON(&resp)
+}
+
+func GetUser(c *fiber.Ctx) error {
+	var err error
+	var resp struct {
+		commResponse
+		User *user.User `json:"user,omitempty"`
+	}
+	resp.User = new(user.User)
+	if err = c.ParamsParser(resp.User); err != nil {
+		resp.SetErrorCode(2001, err)
+	} else {
+		if tx := db.First(resp.User); tx.Error != nil {
+			resp.SetErrorCode(1002, tx.Error)
+		}
+		resp.User.Password = ""
+	}
+	if resp.Code != 0 {
+		resp.User = nil
+	}
+	return c.Status(resp.StatusCode()).JSON(&resp)
+}
+
+type updateUserRequest struct {
+	NickName string `json:"nick_name"`
+	Password string `json:"password,omitempty"`
+	Role     string `json:"role"`
+	Status   int    `json:"status"`
+	Remark   string `json:"remark,omitempty"`
+	Address  string `json:"address,omitempty"`
+	Email    string `json:"email,omitempty"`
+}
+
+func UpdateUser(c *fiber.Ctx) error {
+	var err error
+	var req updateUserRequest
+	var resp commResponse
+	var u user.User
+	if err = c.BodyParser(&req); err != nil {
+		resp.SetErrorCode(2001, err)
+	} else if err = c.ParamsParser(&u); err != nil {
+		resp.SetErrorCode(2001, err)
+	} else if tx := db.First(&u); tx.Error != nil {
+		resp.SetErrorCode(1002, tx.Error)
+	} else {
+		if req.Password != "" {
+			u.UpdatePassword(req.Password)
+		}
+		if req.NickName != "" {
+			u.NickName = req.NickName
+		}
+		if req.Role != "" {
+			u.Role = req.Role
+		}
+		if tx := db.Updates(&u); tx.Error != nil {
+			resp.SetErrorCode(2203, tx.Error)
+		}
+	}
+
+	return c.Status(resp.StatusCode()).JSON(&resp)
+}
+
+func RemoveUser(c *fiber.Ctx) error {
+	var err error
+	var resp commResponse
+	var u user.User
+	if err = c.ParamsParser(&u); err != nil {
+		resp.SetErrorCode(2001, err)
+	} else if tx := db.First(&u); tx.Error != nil {
+		resp.SetErrorCode(1002, tx.Error)
+	} else if tx := db.Delete(&u); tx.Error != nil {
+		resp.SetErrorCode(2202, tx.Error)
+	}
+	return c.Status(resp.StatusCode()).JSON(&resp)
 }
 
 /* ---- 授权中间件 ---- */

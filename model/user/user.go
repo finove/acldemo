@@ -44,6 +44,15 @@ type User struct {
 	Session  map[string]*LoginInfo `json:"session,omitempty" gorm:"-"`
 }
 
+func NewUser(name, password string) (u *User) {
+	u = new(User)
+	u.Name = name
+	u.NickName = name
+	u.UpdatePassword(password)
+	u.Role = RoleMember
+	return
+}
+
 func (u *User) UpdatePassword(newPassword string) (err error) {
 	var bytes []byte
 	if bytes, err = bcrypt.GenerateFromPassword([]byte(newPassword), 9); err != nil {

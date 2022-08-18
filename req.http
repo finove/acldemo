@@ -2,17 +2,45 @@
 @token={{login.response.body.$.token}}
 ###
 # @name login
-POST http://{{apiServer}}/login
+POST http://{{apiServer}}/v1/login
 Content-Type: application/json
 
 {
-    "user_name": "sysadmin",
-    "password": "helloadmin"
+    "username": "user3",
+    "password": "qwe123"
 }
 
 
 ###
 GET http://{{apiServer}}/v1/user
+Authorization: Bearer {{token}}
+
+###
+POST http://{{apiServer}}/v1/user
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "username": "user3",
+    "password": "qwe123"
+}
+
+###
+GET http://{{apiServer}}/v1/user/4
+Authorization: Bearer {{token}}
+
+###
+PUT http://{{apiServer}}/v1/user/4
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "nick_name": "测试用户3",
+    "password": "qwe123"
+}
+
+###
+DELETE http://{{apiServer}}/v1/user/4
 Authorization: Bearer {{token}}
 
 ###

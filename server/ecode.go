@@ -22,6 +22,9 @@ var webErrorCode = map[int][]string{
 	2002: {"400", "请求参数不对"},
 	2100: {"400", "购买失败", "购买失败"},
 	2101: {"400", "清理失败", "刷新过期购买设备失败"},
+	2201: {"400", "添加用户失败"},
+	2202: {"400", "删除用户失败"},
+	2203: {"400", "更新用户信息失败"},
 }
 
 type commResponse struct {
@@ -56,6 +59,9 @@ func (r *commResponse) SetErrorCode(code int, errs ...error) {
 		r.Message = strings.Join(v[1:], ",")
 	}
 	for _, err := range errs {
+		if err == nil {
+			continue
+		}
 		msgs = append(msgs, err.Error())
 	}
 	if len(msgs) > 0 {

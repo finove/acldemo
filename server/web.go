@@ -30,18 +30,18 @@ func Run() {
 		logger.New(), // add simple logger
 		cors.New(),
 	)
-	app.Use(favicon.New())
+	app.Use(favicon.New(favicon.Config{File: "./static/favicon.ico"}))
 	app.Static("/", "./static")
 
-	app.Post("/login", Login)
-	app.Post("/logout", Login)
 	apiV1 := app.Group("/v1")
+	apiV1.Post("/login", Login)
+	apiV1.Post("/logout", Login)
 	apiV1.Get("/version", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{
 			"code":   0,
 			"status": "success",
 			"versions": fiber.Map{
-				"cloudcms": "0.0.3",
+				"cloudcms": "0.0.4",
 			},
 		})
 	})
@@ -49,6 +49,9 @@ func Run() {
 	apiUser.Get("/", FindUser)
 	apiUser.Post("/", NewUser)
 	apiUser.Get("/session", SessionInfo)
+	apiUser.Get("/:id", GetUser)
+	apiUser.Put("/:id", UpdateUser)
+	apiUser.Delete("/:id", RemoveUser)
 	if err = app.Listen(":3000"); err != nil {
 		log.Fatal().Err(err).Msg("run web server")
 	}
@@ -62,6 +65,7 @@ func connectDB() (err error) {
 	db.AutoMigrate(&device.Device{}, &user.User{})
 	res := db.Where("name = ?", "sysadmin").First(&usr)
 	if errors.Is(res.Error, gorm.ErrRecordNotFound) {
+		usr.Name = "sysadmin"
 		usr.Role = user.RoleSysadmin
 		usr.NickName = "Super"
 		usr.Profile.Remark = "系统管理员"
